@@ -224,7 +224,11 @@ export async function logoutUser(): Promise<void> {
     console.log(defaultFetchOptions);
     const response = await fetch(`${API_BASE_URL}/dedi/logout`, {
       method: "POST",
-      ...defaultFetchOptions,
+      credentials: "include",
+      headers: {
+       'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
     });
     if (response.ok) {
       return response.json();
