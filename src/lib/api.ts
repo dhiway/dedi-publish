@@ -3,7 +3,7 @@ import axios from "axios";
 // Create an axios instance with default configuration
 // You can replace the baseURL with your actual API URL when ready
 const api = axios.create({
-  baseURL: "https://dev.dedi.global", // Replace with your API URL
+  baseURL: import.meta.env.VITE_ENDPOINT || "https://registry.becknone.dev.dedi.global", // Replace with your API URL
   headers: {
     "Content-Type": "application/json",
   },
@@ -40,9 +40,6 @@ api.interceptors.response.use(
 );
 
 // Auth endpoints - simplified for registration-only flow
-export const authApi = {
-  logout: () => api.post("/auth/logout"),
-};
 
 // Export the api instance for other requests
 export default api;
@@ -66,13 +63,14 @@ export interface ApiResponse<T> {
 // Registration API call - accepts email and name
 export async function registerUser(
   email: string,
-  name: string
+  name: string,
+  action: string
 ): Promise<ApiResponse<string>> {
   try {
     const response = await fetch(`${API_BASE_URL}/dedi/register`, {
       method: "POST",
       ...defaultFetchOptions,
-      body: JSON.stringify({ email, name }),
+      body: JSON.stringify({ email, name, action }),
     });
 
     const result = await response.json();
@@ -221,13 +219,23 @@ export async function getCurrentUser(): Promise<unknown> {
 // Logout function to clear authentication
 export async function logoutUser(): Promise<void> {
   try {
-    await fetch(`${API_BASE_URL}/dedi/logout`, {
+    console.log("Logging out");
+    console.log(`${API_BASE_URL}/dedi/logout`);
+    console.log(defaultFetchOptions);
+    const response = await fetch(`${API_BASE_URL}/dedi/logout`, {
       method: "POST",
       ...defaultFetchOptions,
     });
+    if (response.ok) {
+      return response.json();
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to logout");
+    }
   } catch (error) {
     // Even if logout fails on server, we'll clear client state
     console.error("Logout error:", error);
+    throw error;
   }
 }
 

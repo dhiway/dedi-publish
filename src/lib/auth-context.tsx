@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, name: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      await registerUser(email, name);
+      await registerUser(email, name, "register");
 
       // If registerUser doesn't throw an error, the registration was successful
       // (registerUser already handles HTTP status codes including 201)
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      await registerUser(email, ""); // Use empty string for name since login doesn't need it
+      await registerUser(email, "", "login"); // Use empty string for name since login doesn't need it
 
       // If registerUser doesn't throw an error, the login was successful
       return true;
