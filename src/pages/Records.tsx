@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, MoreVertical, Eye, Info, ArrowLeft, Search, X } from 'lucide-react';
+import { Plus, MoreVertical, Eye, Info, ArrowLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -166,7 +166,8 @@ export function RecordsPage() {
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addLoading, setAddLoading] = useState(false);
+  const [saveAsDraftLoading, setSaveAsDraftLoading] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
   const [showAddMetadata, setShowAddMetadata] = useState(false);
   const [addFormData, setAddFormData] = useState<AddRecordFormData>({
     record_name: '',
@@ -276,6 +277,25 @@ export function RecordsPage() {
     }
   };
 
+  // Debounced search function - triggers search automatically after user stops typing
+  const handleDebouncedSearch = useCallback(() => {
+    const activeFields = searchFields.filter(field => field.key && field.value.trim());
+    
+    // Clear previous timeout
+    const timeoutId = setTimeout(() => {
+      if (activeFields.length > 0) {
+        handleSearch();
+      } else {
+        // Clear search results if no active fields
+        setShowSearchResults(false);
+        setSearchResults([]);
+      }
+    }, 500); // 500ms debounce
+
+    // Cleanup function to clear timeout
+    return () => clearTimeout(timeoutId);
+  }, [handleSearch, searchFields]);
+
   // Add search field
   const addSearchField = () => {
     const availableFields = getAvailableSearchFields();
@@ -300,6 +320,12 @@ export function RecordsPage() {
     newFields[index] = { key, value };
     setSearchFields(newFields);
   };
+
+  // Effect to trigger debounced search when search fields change
+  useEffect(() => {
+    const cleanup = handleDebouncedSearch();
+    return cleanup;
+  }, [handleDebouncedSearch]);
 
   // Clear search
   const clearSearch = () => {
@@ -469,10 +495,10 @@ export function RecordsPage() {
 
   // Save record as draft
   const handleSaveAsDraft = async () => {
-    if (addLoading) return; // Prevent multiple submissions
+    if (saveAsDraftLoading || publishLoading) return; // Prevent multiple submissions
     
     try {
-      setAddLoading(true);
+      setSaveAsDraftLoading(true);
       
       // Validate required fields
       if (!addFormData.record_name.trim()) {
@@ -604,16 +630,16 @@ export function RecordsPage() {
         variant: 'destructive',
       });
     } finally {
-      setAddLoading(false);
+      setSaveAsDraftLoading(false);
     }
   };
 
   // Publish record directly
   const handlePublishRecord = async () => {
-    if (addLoading) return; // Prevent multiple submissions
+    if (saveAsDraftLoading || publishLoading) return; // Prevent multiple submissions
     
     try {
-      setAddLoading(true);
+      setPublishLoading(true);
       
       // Validate required fields
       if (!addFormData.record_name.trim()) {
@@ -745,7 +771,7 @@ export function RecordsPage() {
         variant: 'destructive',
       });
     } finally {
-      setAddLoading(false);
+      setPublishLoading(false);
     }
   };
 
@@ -971,21 +997,15 @@ export function RecordsPage() {
             ))}
           </div>
           
-          <div className="flex justify-end mt-4">
-            <Button onClick={handleSearch} disabled={isSearching}>
-              {isSearching ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 h-4 w-4" />
-                  Search
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Search automatically triggers as you type - no button needed */}
+          {isSearching && (
+            <div className="flex justify-center mt-4">
+              <div className="flex items-center text-sm text-muted-foreground">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Searching...
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Search Results */}
@@ -1386,11 +1406,11 @@ export function RecordsPage() {
             </div>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={addLoading}>
+            <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={saveAsDraftLoading || publishLoading}>
               Cancel
             </Button>
-            <Button variant="secondary" onClick={handleSaveAsDraft} disabled={addLoading}>
-              {addLoading ? (
+            <Button variant="secondary" onClick={handleSaveAsDraft} disabled={saveAsDraftLoading || publishLoading}>
+              {saveAsDraftLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
                   Saving...
@@ -1399,8 +1419,8 @@ export function RecordsPage() {
                 'Save as Draft'
               )}
             </Button>
-            <Button onClick={handlePublishRecord} disabled={addLoading}>
-              {addLoading ? (
+            <Button onClick={handlePublishRecord} disabled={saveAsDraftLoading || publishLoading}>
+              {publishLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Publishing...

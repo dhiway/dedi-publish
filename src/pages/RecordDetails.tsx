@@ -673,14 +673,15 @@ export function RecordDetailsPage(): JSX.Element {
 
     const items = [];
 
-    // Always show Update button (except for expired)
-    items.push(
-      <DropdownMenuItem key="update" onClick={handleOpenUpdateModal}>
-        Update
-      </DropdownMenuItem>
-    );
-
-    items.push(<DropdownMenuSeparator key="separator" />);
+    // Only show Update button for draft and live states
+    if (state === 'draft' || state === 'live') {
+      items.push(
+        <DropdownMenuItem key="update" onClick={handleOpenUpdateModal}>
+          Update
+        </DropdownMenuItem>
+      );
+      items.push(<DropdownMenuSeparator key="separator" />);
+    }
 
     // State-specific buttons
     if (state === 'draft') {
@@ -828,7 +829,7 @@ export function RecordDetailsPage(): JSX.Element {
               <CardTitle className="text-2xl">{recordDetails.record_name}</CardTitle>
               <CardDescription>{recordDetails.description}</CardDescription>
             </div>
-            {recordDetails.state !== 'expired' && (
+            {recordDetails.state !== 'expired' && recordDetails.state !== 'revoked' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">

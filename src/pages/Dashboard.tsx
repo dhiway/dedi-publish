@@ -45,6 +45,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TruncatedText } from "@/components/ui/truncated-text";
+import { SharedNamespaceCard } from "@/components/namespace/SharedNamespaceCard";
 
 // Interface for namespace data from API
 interface Namespace {
@@ -78,7 +79,9 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [ownedNamespaces, setOwnedNamespaces] = useState<Namespace[]>([]);
-  const [delegatedNamespaces, setDelegatedNamespaces] = useState<Namespace[]>([]);
+  const [delegatedNamespaces, setDelegatedNamespaces] = useState<Namespace[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -96,9 +99,13 @@ export function DashboardPage() {
   const [showUpdateMetadata, setShowUpdateMetadata] = useState(false);
   const [createModalDomainInput, setCreateModalDomainInput] = useState("");
   const [isGeneratingCreateDns, setIsGeneratingCreateDns] = useState(false);
-  const [createModalGeneratedTxt, setCreateModalGeneratedTxt] = useState<string | null>(null);
+  const [createModalGeneratedTxt, setCreateModalGeneratedTxt] = useState<
+    string | null
+  >(null);
   const [isVerifyingCreate, setIsVerifyingCreate] = useState(false);
-  const [createdNamespaceId, setCreatedNamespaceId] = useState<string | null>(null);
+  const [createdNamespaceId, setCreatedNamespaceId] = useState<string | null>(
+    null
+  );
   const [formData, setFormData] = useState<NamespaceFormData>({
     name: "",
     description: "",
@@ -111,7 +118,7 @@ export function DashboardPage() {
       setLoading(true);
 
       console.log("🔄 Fetching namespaces from API...");
-      const result = await getNamespacesByProfile() as {
+      const result = (await getNamespacesByProfile()) as {
         message: string;
         data: {
           owned_namespaces?: Namespace[];
@@ -122,31 +129,57 @@ export function DashboardPage() {
 
       if (result.message === "User namespaces retrieved successfully") {
         // Process owned namespaces
-        const ownedNamespacesWithProps = (result.data.owned_namespaces || []).map(
-          (namespace: Namespace) => ({
-            ...namespace,
-            verified: false, // Default to false, can be updated based on business logic
-            dnsTxt: null, // Default to null
-          })
-        );
+        const ownedNamespacesWithProps = (
+          result.data.owned_namespaces || []
+        ).map((namespace: Namespace) => ({
+          ...namespace,
+          verified: false, // Default to false, can be updated based on business logic
+          dnsTxt: null, // Default to null
+        }));
 
         // Process delegated namespaces
-        const delegatedNamespacesWithProps = (result.data.delegated_namespaces || []).map(
-          (namespace: Namespace) => ({
-            ...namespace,
-            verified: false, // Default to false, can be updated based on business logic
-            dnsTxt: null, // Default to null
-          })
+        const delegatedNamespacesWithProps = (
+          result.data.delegated_namespaces || []
+        ).map((namespace: Namespace) => ({
+          ...namespace,
+          verified: false, // Default to false, can be updated based on business logic
+          dnsTxt: null, // Default to null
+        }));
+
+        console.log(
+          "✅ Setting owned namespaces in state:",
+          ownedNamespacesWithProps
+        );
+        console.log(
+          "✅ Setting delegated namespaces in state:",
+          delegatedNamespacesWithProps
         );
 
-        console.log("✅ Setting owned namespaces in state:", ownedNamespacesWithProps);
-        console.log("✅ Setting delegated namespaces in state:", delegatedNamespacesWithProps);
-        
         setOwnedNamespaces(ownedNamespacesWithProps);
         setDelegatedNamespaces(delegatedNamespacesWithProps);
+
+        // Show positive message if user has no namespaces at all
+        if (
+          ownedNamespacesWithProps.length === 0 &&
+          delegatedNamespacesWithProps.length === 0
+        ) {
+          toast({
+            title: "Welcome to DeDi!",
+            description:
+              "You do not have any namespaces yet, go ahead and start your DeDi journey",
+            className: "border-blue-200 bg-blue-50 text-blue-900",
+          });
+        }
       } else {
-        // Don't show toast for "No namespaces found" as it's a normal case for new users
-        if (result.message !== "No namespaces found") {
+        // Show a positive message for new users with no namespaces
+        if (result.message === "No namespaces found") {
+          toast({
+            title: "Welcome to DeDi!",
+            description:
+              "You do not have any namespaces yet, go ahead and start your DeDi journey",
+            className: "border-blue-200 bg-blue-50 text-blue-900",
+          });
+        } else {
           toast({
             title: "Error",
             description: result.message || "Failed to fetch namespaces",
@@ -160,11 +193,22 @@ export function DashboardPage() {
         error instanceof Error
           ? error.message
           : "Failed to fetch namespaces. Please try again.";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+
+      // Handle "No namespaces found" as a positive message instead of error
+      if (errorMessage === "No namespaces found") {
+        toast({
+          title: "Welcome to DeDi!",
+          description:
+            "You do not have any namespaces yet, go ahead and start your DeDi journey",
+          className: "border-blue-200 bg-blue-50 text-blue-900",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -221,7 +265,7 @@ export function DashboardPage() {
         meta: meta,
       };
 
-      const result = await createNamespace(namespaceData) as {
+      const result = (await createNamespace(namespaceData)) as {
         message: string;
         data: { namespace_id: string };
         error?: string; // Add the error property to the type
@@ -292,7 +336,8 @@ export function DashboardPage() {
     try {
       setIsGeneratingCreateDns(true);
 
-      const API_BASE_URL = import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global";
+      const API_BASE_URL =
+        import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global";
       const response = await fetch(
         `${API_BASE_URL}/dedi/generate-dns-txt/${createdNamespaceId}/${createModalDomainInput.trim()}`,
         {
@@ -304,7 +349,7 @@ export function DashboardPage() {
         }
       );
 
-      const result = await response.json() as {
+      const result = (await response.json()) as {
         message?: string;
         txt?: string;
         error?: string;
@@ -314,7 +359,8 @@ export function DashboardPage() {
         setCreateModalGeneratedTxt(result.txt ?? null);
         toast({
           title: "DNS TXT Record Generated",
-          description: result.message || "DNS TXT record has been generated successfully.",
+          description:
+            result.message || "DNS TXT record has been generated successfully.",
           className: "border-green-200 bg-green-50 text-green-900",
         });
       } else {
@@ -346,7 +392,8 @@ export function DashboardPage() {
     try {
       setIsVerifyingCreate(true);
 
-      const API_BASE_URL = import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global";
+      const API_BASE_URL =
+        import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global";
       const response = await fetch(`${API_BASE_URL}/dedi/verify-domain`, {
         method: "POST",
         credentials: "include",
@@ -358,14 +405,15 @@ export function DashboardPage() {
         }),
       });
 
-      const result = await response.json() as {
+      const result = (await response.json()) as {
         message: string;
       };
 
       if (response.ok) {
         toast({
           title: "✅ Verification Successful!",
-          description: result.message || "Domain has been successfully verified.",
+          description:
+            result.message || "Domain has been successfully verified.",
           className: "border-green-200 bg-green-50 text-green-900",
         });
 
@@ -427,10 +475,10 @@ export function DashboardPage() {
         meta: meta,
       };
 
-      const result = await updateNamespace(
+      const result = (await updateNamespace(
         selectedNamespace.namespace_id,
         namespaceData
-      ) as {
+      )) as {
         message: string;
         error?: string;
       };
@@ -466,7 +514,7 @@ export function DashboardPage() {
           );
 
           try {
-            const result = await getNamespacesByProfile() as {
+            const result = (await getNamespacesByProfile()) as {
               message: string;
               data: {
                 owned_namespaces?: Namespace[];
@@ -591,14 +639,14 @@ export function DashboardPage() {
         setGeneratedTxt(result.txt);
 
         // Update the namespace in the list with the DNS TXT record
-        setOwnedNamespaces(prev =>
+        setOwnedNamespaces((prev) =>
           prev.map((ns) =>
             ns.namespace_id === selectedNamespace.namespace_id
               ? { ...ns, dnsTxt: result.txt }
               : ns
           )
         );
-        setDelegatedNamespaces(prev =>
+        setDelegatedNamespaces((prev) =>
           prev.map((ns) =>
             ns.namespace_id === selectedNamespace.namespace_id
               ? { ...ns, dnsTxt: result.txt }
@@ -655,14 +703,14 @@ export function DashboardPage() {
 
       if (response.ok) {
         // Update the namespace as verified in the UI
-        setOwnedNamespaces(prev =>
+        setOwnedNamespaces((prev) =>
           prev.map((ns) =>
             ns.namespace_id === namespace.namespace_id
               ? { ...ns, verified: true }
               : ns
           )
         );
-        setDelegatedNamespaces(prev =>
+        setDelegatedNamespaces((prev) =>
           prev.map((ns) =>
             ns.namespace_id === namespace.namespace_id
               ? { ...ns, verified: true }
@@ -701,14 +749,14 @@ export function DashboardPage() {
         description: "DNS TXT record copied to clipboard",
       });
       setIsDnsTxtModalOpen(false);
-      setOwnedNamespaces(prev =>
+      setOwnedNamespaces((prev) =>
         prev.map((ns) =>
           ns.namespace_id === selectedNamespace.namespace_id
             ? { ...ns, dnsTxt: selectedNamespace.dnsTxt }
             : ns
         )
       );
-      setDelegatedNamespaces(prev =>
+      setDelegatedNamespaces((prev) =>
         prev.map((ns) =>
           ns.namespace_id === selectedNamespace.namespace_id
             ? { ...ns, dnsTxt: selectedNamespace.dnsTxt }
@@ -753,8 +801,13 @@ export function DashboardPage() {
     setIsUpdateModalOpen(true);
   };
 
-  const handleNamespaceClick = (namespaceId: string, isOwned: boolean = true) => {
-    navigate(`/namespaces/${namespaceId}?type=${isOwned ? 'owned' : 'delegated'}`);
+  const handleNamespaceClick = (
+    namespaceId: string,
+    isOwned: boolean = true
+  ) => {
+    navigate(
+      `/namespaces/${namespaceId}?type=${isOwned ? "owned" : "delegated"}`
+    );
   };
 
   const handleMetaChange = (key: string, value: string) => {
@@ -807,7 +860,7 @@ export function DashboardPage() {
                 {ownedNamespaces.length > 3 && (
                   <Button
                     variant="outline"
-                    onClick={() => navigate('/namespaces/owned')}
+                    onClick={() => navigate("/namespaces/owned")}
                   >
                     View More
                   </Button>
@@ -818,13 +871,18 @@ export function DashboardPage() {
                   <Card
                     key={namespace.namespace_id}
                     className="hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleNamespaceClick(namespace.namespace_id, true)}
+                    onClick={() =>
+                      handleNamespaceClick(namespace.namespace_id, true)
+                    }
                   >
                     <CardHeader className="flex flex-row items-center justify-between">
                       <div>
                         <CardTitle>{namespace.name}</CardTitle>
                         <CardDescription>
-                          <TruncatedText text={namespace.description} maxLength={100} />
+                          <TruncatedText
+                            text={namespace.description}
+                            maxLength={100}
+                          />
                         </CardDescription>
                       </div>
                       <DropdownMenu>
@@ -836,7 +894,9 @@ export function DashboardPage() {
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuContent
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <DropdownMenuItem
                             onClick={() => openUpdateModal(namespace)}
                           >
@@ -880,7 +940,9 @@ export function DashboardPage() {
                               <TooltipTrigger asChild>
                                 <div className="flex items-center gap-2 text-green-600">
                                   <Check className="h-4 w-4" />
-                                  <span className="text-sm font-medium">Verified</span>
+                                  <span className="text-sm font-medium">
+                                    Verified
+                                  </span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -920,7 +982,7 @@ export function DashboardPage() {
                 {delegatedNamespaces.length > 3 && (
                   <Button
                     variant="outline"
-                    onClick={() => navigate('/namespaces/shared')}
+                    onClick={() => navigate("/namespaces/shared")}
                   >
                     View More
                   </Button>
@@ -928,96 +990,14 @@ export function DashboardPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {delegatedNamespaces.slice(0, 3).map((namespace) => (
-            <Card
-              key={namespace.namespace_id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => handleNamespaceClick(namespace.namespace_id, false)}
-            >
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>{namespace.name}</CardTitle>
-                  <CardDescription>
-                    <TruncatedText text={namespace.description} maxLength={100} />
-                  </CardDescription>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem
-                      onClick={() => openUpdateModal(namespace)}
-                    >
-                      Update
-                    </DropdownMenuItem>
-                    {!namespace.dnsTxt && (
-                      <DropdownMenuItem
-                        onClick={() => handleGenerateDnsTxt(namespace)}
-                      >
-                        Generate DNS TXT
-                      </DropdownMenuItem>
-                    )}
-                    {namespace.dnsTxt && (
-                      <DropdownMenuItem
-                        onClick={() => handleViewDnsTxt(namespace)}
-                      >
-                        View DNS TXT
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    Created:{" "}
-                    {new Date(namespace.created_at).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Updated:{" "}
-                    {new Date(namespace.updated_at).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Registries: {namespace.registry_count || 0}
-                  </p>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  {namespace.is_verified ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2 text-green-600">
-                            <Check className="h-4 w-4" />
-                            <span className="text-sm font-medium">Verified</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>This namespace is verified</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium px-4 py-2 shadow-sm hover:shadow-md transition-all"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleVerifyNamespace(namespace);
-                      }}
-                    >
-                      Verify
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-                  </Card>
+                  <SharedNamespaceCard
+                    key={namespace.namespace_id}
+                    namespace={namespace}
+                    onClick={(namespaceId) =>
+                      handleNamespaceClick(namespaceId, false)
+                    }
+                    onVerify={handleVerifyNamespace}
+                  />
                 ))}
               </div>
             </div>
@@ -1205,25 +1185,29 @@ export function DashboardPage() {
                 </div>
               )}
             </div>
-            
+
             {/* DNS TXT and Verify Section */}
             <div className="space-y-4 border-t pt-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Domain for DNS TXT (Optional)</label>
+                <label className="text-sm font-medium">
+                  Domain for DNS TXT (Optional)
+                </label>
                 <Input
                   value={createModalDomainInput}
                   onChange={(e) => setCreateModalDomainInput(e.target.value)}
                   placeholder="Enter domain name (e.g., example.com)"
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1"
                   onClick={handleCreateModalGenerateDns}
-                  disabled={isGeneratingCreateDns || !createModalDomainInput.trim()}
+                  disabled={
+                    isGeneratingCreateDns || !createModalDomainInput.trim()
+                  }
                 >
                   {isGeneratingCreateDns ? (
                     <>
@@ -1234,7 +1218,7 @@ export function DashboardPage() {
                     "Generate DNS TXT"
                   )}
                 </Button>
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -1252,12 +1236,16 @@ export function DashboardPage() {
                   )}
                 </Button>
               </div>
-              
+
               {createModalGeneratedTxt && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Generated DNS TXT Record:</label>
+                  <label className="text-sm font-medium">
+                    Generated DNS TXT Record:
+                  </label>
                   <div className="p-3 bg-gray-50 rounded-md border">
-                    <code className="text-sm break-all">{createModalGeneratedTxt}</code>
+                    <code className="text-sm break-all">
+                      {createModalGeneratedTxt}
+                    </code>
                   </div>
                   <Button
                     type="button"
@@ -1278,7 +1266,7 @@ export function DashboardPage() {
                 </div>
               )}
             </div>
-            
+
             <Button
               className="w-full"
               onClick={handleCreateNamespace}
