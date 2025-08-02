@@ -2,34 +2,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
-  MoreVertical,
   ArrowLeft,
-  Check,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { getNamespacesByProfile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SharedNamespaceCard } from "@/components/namespace/SharedNamespaceCard";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { TruncatedText } from "@/components/ui/truncated-text";
 
 // Interface for namespace data from API
 interface Namespace {
@@ -220,81 +199,12 @@ export function SharedNamespacesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {delegatedNamespaces.map((namespace) => (
-            <Card
+            <SharedNamespaceCard
               key={namespace.namespace_id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => handleNamespaceClick(namespace.namespace_id)}
-            >
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>{namespace.name}</CardTitle>
-                  <CardDescription>
-                    <TruncatedText text={namespace.description} maxLength={100} />
-                  </CardDescription>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem>
-                      Update
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      Generate DNS TXT
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    Created: {new Date(namespace.created_at).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Updated: {new Date(namespace.updated_at).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Registries: {namespace.registry_count || 0}
-                  </p>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  {namespace.is_verified ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2 text-green-600">
-                            <Check className="h-4 w-4" />
-                            <span className="text-sm font-medium">Verified</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>This namespace is verified</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium px-4 py-2 shadow-sm hover:shadow-md transition-all"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleVerifyNamespace(namespace);
-                      }}
-                    >
-                      Verify
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+              namespace={namespace}
+              onClick={handleNamespaceClick}
+              onVerify={handleVerifyNamespace}
+            />
           ))}
         </div>
       )}

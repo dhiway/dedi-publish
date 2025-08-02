@@ -421,7 +421,7 @@ export function NamespaceDetailsPage() {
     setActiveRegistries(filteredRegistries.filter(registry => !registry.is_revoked));
     setRevokedRegistries(filteredRegistries.filter(registry => registry.is_revoked));
     
-    console.log("✅ Filtered registries:", filteredRegistries.length, "registries found");
+
   }, [registries]);
 
   // Handle search input change with debouncing
@@ -450,8 +450,7 @@ export function NamespaceDetailsPage() {
   // Define fetch functions before useEffect
   const fetchRegistries = useCallback(async () => {
     try {
-      console.log("🔄 Fetching registries...");
-      console.log("🔍 Namespace type:", namespaceType);
+
       setLoading(true);
       const API_BASE_URL =
         import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global";
