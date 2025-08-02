@@ -117,7 +117,6 @@ export function DashboardPage() {
     try {
       setLoading(true);
 
-      console.log("🔄 Fetching namespaces from API...");
       const result = (await getNamespacesByProfile()) as {
         message: string;
         data: {
@@ -125,7 +124,6 @@ export function DashboardPage() {
           delegated_namespaces?: Namespace[];
         };
       };
-      console.log("📊 API response:", result);
 
       if (result.message === "User namespaces retrieved successfully") {
         // Process owned namespaces
@@ -146,14 +144,7 @@ export function DashboardPage() {
           dnsTxt: null, // Default to null
         }));
 
-        console.log(
-          "✅ Setting owned namespaces in state:",
-          ownedNamespacesWithProps
-        );
-        console.log(
-          "✅ Setting delegated namespaces in state:",
-          delegatedNamespacesWithProps
-        );
+
 
         setOwnedNamespaces(ownedNamespacesWithProps);
         setDelegatedNamespaces(delegatedNamespacesWithProps);
@@ -280,7 +271,6 @@ export function DashboardPage() {
 
         // Store the namespace_id for DNS and verify operations
         setCreatedNamespaceId(result.data.namespace_id);
-        console.log("Created namespace ID:", result.data.namespace_id);
 
         // Close modal and reset form
         setIsCreateModalOpen(false);
@@ -483,12 +473,7 @@ export function DashboardPage() {
         error?: string;
       };
 
-      console.log("🔍 Update namespace result:", result); // Debug log
-      console.log("🔍 Result message:", result.message); // Debug log
-      console.log(
-        "🔍 Message comparison:",
-        result.message === "namespace updated"
-      ); // Debug log
+
 
       if (result.message === "namespace updated") {
         toast({
@@ -509,10 +494,6 @@ export function DashboardPage() {
 
         // Add retry logic to ensure we get the updated data
         const retryRefresh = async (attempt = 1, maxAttempts = 5) => {
-          console.log(
-            `🔄 Refreshing namespaces after update (attempt ${attempt})...`
-          );
-
           try {
             const result = (await getNamespacesByProfile()) as {
               message: string;
@@ -538,7 +519,6 @@ export function DashboardPage() {
                 (updatedNamespace.name === updatedName ||
                   updatedNamespace.description === updatedDescription)
               ) {
-                console.log("✅ Updated namespace found, refreshing UI...");
                 await fetchNamespaces();
                 return;
               }
@@ -546,17 +526,11 @@ export function DashboardPage() {
 
             // If we haven't found the updated data and haven't reached max attempts
             if (attempt < maxAttempts) {
-              console.log(
-                `⏳ Updated data not found, retrying in ${attempt * 500}ms...`
-              );
               setTimeout(
                 () => retryRefresh(attempt + 1, maxAttempts),
                 attempt * 500
               );
             } else {
-              console.log(
-                "⚠️ Max retry attempts reached, doing final refresh..."
-              );
               await fetchNamespaces();
             }
           } catch (error) {

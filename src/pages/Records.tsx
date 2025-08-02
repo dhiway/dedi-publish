@@ -200,7 +200,7 @@ export function RecordsPage() {
   // Search functionality state
   const [searchFields, setSearchFields] = useState<SearchField[]>([]);
   const [searchResults, setSearchResults] = useState<SearchRecord[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+
   const [showSearchResults, setShowSearchResults] = useState(false);
 
 
@@ -229,7 +229,6 @@ export function RecordsPage() {
     }
 
     try {
-      setIsSearching(true);
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global";
       
       // Build query parameters
@@ -252,14 +251,11 @@ export function RecordsPage() {
       );
 
       const result: SearchResponse = await response.json();
-      console.log("🔍 Search API response:", result);
 
       if (result.message === "Search results") {
         setSearchResults(result.data);
         setShowSearchResults(true);
-        console.log("✅ Search results updated:", result.data.length, "records found");
       } else {
-        console.log("ℹ️ No search results found:", result.message);
         setSearchResults([]);
         setShowSearchResults(true);
       }
@@ -272,8 +268,6 @@ export function RecordsPage() {
       });
       setSearchResults([]);
       setShowSearchResults(false);
-    } finally {
-      setIsSearching(false);
     }
   };
 
@@ -341,7 +335,6 @@ export function RecordsPage() {
 
   const fetchRecords = useCallback(async () => {
     try {
-      console.log('🔄 Fetching records...');
       setLoading(true);
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || 'https://dev.dedi.global';
       const response = await fetch(`${API_BASE_URL}/dedi/internal/${namespaceId}/${registryName}/query-records-by-profile`, {
@@ -353,30 +346,14 @@ export function RecordsPage() {
       });
 
       const result: RecordsApiResponse = await response.json();
-      console.log('📊 Records API response:', result);
-      console.log('📊 Response status:', response.status);
-      console.log('📊 Response OK:', response.ok);
       
       if (response.ok && result.message === "Resource retrieved successfully") {
-        console.log('🔍 Processing API response...');
-        console.log('🔍 Raw records data:', result.data.records);
-        console.log('🔍 Records array length:', result.data.records?.length);
-        console.log('🔍 First record structure:', result.data.records?.[0]);
-        
         setRecords(result.data.records || []);
         setSchema(result.data.schema || {});
         setNamespaceName(result.data.namespace_name || 'Loading...');
         setRegistryDisplayName(result.data.registry_name || 'Loading...');
         setTotalRecords(result.data.total_records || 0);
-        
-        console.log('✅ Records updated:', result.data.records?.length || 0, 'records');
-        console.log('🏷️ Namespace name from API:', result.data.namespace_name);
-        console.log('📁 Registry name from API:', result.data.registry_name);
-        console.log('📊 Schema from API:', result.data.schema);
-        console.log('📊 Records state after update:', result.data.records);
       } else {
-        console.error('❌ Failed to fetch records:', result.message);
-        console.error('❌ Full error response:', result);
         toast({
           title: 'Error',
           description: result.message || 'Failed to fetch records',
@@ -384,7 +361,7 @@ export function RecordsPage() {
         });
       }
     } catch (error) {
-      console.error('❌ Error fetching records:', error);
+      console.error('Error fetching records:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch records. Please try again.',
@@ -406,9 +383,6 @@ export function RecordsPage() {
   };
 
   const handleOpenAddModal = () => {
-    console.log('🔧 Opening add modal with schema:', schema);
-    console.log('🔧 Array field configs:', arrayFieldConfigs);
-    
     // Initialize form with empty details based on schema
     const initialDetails: { [key: string]: string } = {};
     const initialArrayFields: { [key: string]: unknown[] } = {};
@@ -422,10 +396,7 @@ export function RecordsPage() {
         ? (fieldSchema as { type: string }).type?.toLowerCase() 
         : 'string') || 'string';
       
-      console.log(`🔧 Processing field: ${field}, type: ${fieldType}`);
-      
       if (fieldType === 'array' && arrayFieldConfigs[field]) {
-        console.log(`🔧 ${field} is an array field with config:`, arrayFieldConfigs[field]);
         // Initialize array fields with one empty item
         const emptyItem: { [key: string]: string } = {};
         Object.keys(arrayFieldConfigs[field]).forEach(itemKey => {
@@ -433,13 +404,9 @@ export function RecordsPage() {
         });
         initialArrayFields[field] = [emptyItem];
       } else {
-        console.log(`🔧 ${field} is a regular field`);
         initialDetails[field] = '';
       }
     });
-    
-    console.log('🔧 Initial details:', initialDetails);
-    console.log('🔧 Initial array fields:', initialArrayFields);
     
     setAddFormData({
       record_name: '',
@@ -580,7 +547,6 @@ export function RecordsPage() {
       }
 
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || 'https://dev.dedi.global';
-      console.log('🔄 Saving record as draft:', `${API_BASE_URL}/dedi/${namespaceId}/${registryName}/save-record-as-draft`);
       
       const response = await fetch(`${API_BASE_URL}/dedi/${namespaceId}/${registryName}/save-record-as-draft`, {
         method: 'POST',
@@ -597,7 +563,6 @@ export function RecordsPage() {
       });
 
       const result = await response.json();
-      console.log('📝 Save as draft API response:', result);
 
       if (response.ok) {
         toast({
@@ -722,7 +687,6 @@ export function RecordsPage() {
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || 'https://dev.dedi.global';
       
       // Publish the record directly using save-record-as-draft with publish=true
-      console.log('🔄 Publishing record directly');
       const publishResponse = await fetch(`${API_BASE_URL}/dedi/${namespaceId}/${registryName}/save-record-as-draft?publish=true`, {
         method: 'POST',
         credentials: 'include',
@@ -738,7 +702,6 @@ export function RecordsPage() {
       });
 
       const publishResult = await publishResponse.json();
-      console.log('📝 Publish API response:', publishResult);
 
       if (publishResponse.ok) {
         toast({
@@ -873,9 +836,7 @@ export function RecordsPage() {
     return value || '';
   };
 
-  console.log('🔍 Render check - records state:', records);
-  console.log('🔍 Render check - records length:', records.length);
-  console.log('🔍 Render check - loading state:', loading);
+
 
   if (loading) {
     return (
@@ -998,14 +959,6 @@ export function RecordsPage() {
           </div>
           
           {/* Search automatically triggers as you type - no button needed */}
-          {isSearching && (
-            <div className="flex justify-center mt-4">
-              <div className="flex items-center text-sm text-muted-foreground">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                Searching...
-              </div>
-            </div>
-          )}
         </div>
         
         {/* Search Results */}
