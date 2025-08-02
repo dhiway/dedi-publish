@@ -3,7 +3,7 @@ import axios from "axios";
 // Create an axios instance with default configuration
 // You can replace the baseURL with your actual API URL when ready
 const api = axios.create({
-  baseURL: import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global", // Replace with your API URL
+  baseURL: import.meta.env.VITE_ENDPOINT || "https://registry.becknone.dev.dedi.global", // Replace with your API URL
   headers: {
     "Content-Type": "application/json",
   },

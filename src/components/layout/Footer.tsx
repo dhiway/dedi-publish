@@ -9,7 +9,7 @@ export function Footer() {
   };
 
   const handleFeedbackClick = () => {
-    window.open('https://github.com/dhiway/dedi-publish/issues', '_blank');
+    window.open('https://github.com/dedi-official/community/issues', '_blank');
   };
 
   return (

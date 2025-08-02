@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, MoreVertical, Eye, Info, ArrowLeft, Search, X } from 'lucide-react';
+import { Plus, MoreVertical, Eye, Info, ArrowLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -166,7 +166,8 @@ export function RecordsPage() {
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addLoading, setAddLoading] = useState(false);
+  const [saveAsDraftLoading, setSaveAsDraftLoading] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
   const [showAddMetadata, setShowAddMetadata] = useState(false);
   const [addFormData, setAddFormData] = useState<AddRecordFormData>({
     record_name: '',
@@ -199,7 +200,7 @@ export function RecordsPage() {
   // Search functionality state
   const [searchFields, setSearchFields] = useState<SearchField[]>([]);
   const [searchResults, setSearchResults] = useState<SearchRecord[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+
   const [showSearchResults, setShowSearchResults] = useState(false);
 
 
@@ -228,7 +229,6 @@ export function RecordsPage() {
     }
 
     try {
-      setIsSearching(true);
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || "https://dev.dedi.global";
       
       // Build query parameters
@@ -251,14 +251,11 @@ export function RecordsPage() {
       );
 
       const result: SearchResponse = await response.json();
-      console.log("🔍 Search API response:", result);
 
       if (result.message === "Search results") {
         setSearchResults(result.data);
         setShowSearchResults(true);
-        console.log("✅ Search results updated:", result.data.length, "records found");
       } else {
-        console.log("ℹ️ No search results found:", result.message);
         setSearchResults([]);
         setShowSearchResults(true);
       }
@@ -271,10 +268,27 @@ export function RecordsPage() {
       });
       setSearchResults([]);
       setShowSearchResults(false);
-    } finally {
-      setIsSearching(false);
     }
   };
+
+  // Debounced search function - triggers search automatically after user stops typing
+  const handleDebouncedSearch = useCallback(() => {
+    const activeFields = searchFields.filter(field => field.key && field.value.trim());
+    
+    // Clear previous timeout
+    const timeoutId = setTimeout(() => {
+      if (activeFields.length > 0) {
+        handleSearch();
+      } else {
+        // Clear search results if no active fields
+        setShowSearchResults(false);
+        setSearchResults([]);
+      }
+    }, 500); // 500ms debounce
+
+    // Cleanup function to clear timeout
+    return () => clearTimeout(timeoutId);
+  }, [handleSearch, searchFields]);
 
   // Add search field
   const addSearchField = () => {
@@ -301,6 +315,12 @@ export function RecordsPage() {
     setSearchFields(newFields);
   };
 
+  // Effect to trigger debounced search when search fields change
+  useEffect(() => {
+    const cleanup = handleDebouncedSearch();
+    return cleanup;
+  }, [handleDebouncedSearch]);
+
   // Clear search
   const clearSearch = () => {
     setSearchFields([{ key: 'record_name', value: '' }]);
@@ -315,7 +335,6 @@ export function RecordsPage() {
 
   const fetchRecords = useCallback(async () => {
     try {
-      console.log('🔄 Fetching records...');
       setLoading(true);
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || 'https://dev.dedi.global';
       const response = await fetch(`${API_BASE_URL}/dedi/internal/${namespaceId}/${registryName}/query-records-by-profile`, {
@@ -327,30 +346,14 @@ export function RecordsPage() {
       });
 
       const result: RecordsApiResponse = await response.json();
-      console.log('📊 Records API response:', result);
-      console.log('📊 Response status:', response.status);
-      console.log('📊 Response OK:', response.ok);
       
       if (response.ok && result.message === "Resource retrieved successfully") {
-        console.log('🔍 Processing API response...');
-        console.log('🔍 Raw records data:', result.data.records);
-        console.log('🔍 Records array length:', result.data.records?.length);
-        console.log('🔍 First record structure:', result.data.records?.[0]);
-        
         setRecords(result.data.records || []);
         setSchema(result.data.schema || {});
         setNamespaceName(result.data.namespace_name || 'Loading...');
         setRegistryDisplayName(result.data.registry_name || 'Loading...');
         setTotalRecords(result.data.total_records || 0);
-        
-        console.log('✅ Records updated:', result.data.records?.length || 0, 'records');
-        console.log('🏷️ Namespace name from API:', result.data.namespace_name);
-        console.log('📁 Registry name from API:', result.data.registry_name);
-        console.log('📊 Schema from API:', result.data.schema);
-        console.log('📊 Records state after update:', result.data.records);
       } else {
-        console.error('❌ Failed to fetch records:', result.message);
-        console.error('❌ Full error response:', result);
         toast({
           title: 'Error',
           description: result.message || 'Failed to fetch records',
@@ -358,7 +361,7 @@ export function RecordsPage() {
         });
       }
     } catch (error) {
-      console.error('❌ Error fetching records:', error);
+      console.error('Error fetching records:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch records. Please try again.',
@@ -380,9 +383,6 @@ export function RecordsPage() {
   };
 
   const handleOpenAddModal = () => {
-    console.log('🔧 Opening add modal with schema:', schema);
-    console.log('🔧 Array field configs:', arrayFieldConfigs);
-    
     // Initialize form with empty details based on schema
     const initialDetails: { [key: string]: string } = {};
     const initialArrayFields: { [key: string]: unknown[] } = {};
@@ -396,10 +396,7 @@ export function RecordsPage() {
         ? (fieldSchema as { type: string }).type?.toLowerCase() 
         : 'string') || 'string';
       
-      console.log(`🔧 Processing field: ${field}, type: ${fieldType}`);
-      
       if (fieldType === 'array' && arrayFieldConfigs[field]) {
-        console.log(`🔧 ${field} is an array field with config:`, arrayFieldConfigs[field]);
         // Initialize array fields with one empty item
         const emptyItem: { [key: string]: string } = {};
         Object.keys(arrayFieldConfigs[field]).forEach(itemKey => {
@@ -407,13 +404,9 @@ export function RecordsPage() {
         });
         initialArrayFields[field] = [emptyItem];
       } else {
-        console.log(`🔧 ${field} is a regular field`);
         initialDetails[field] = '';
       }
     });
-    
-    console.log('🔧 Initial details:', initialDetails);
-    console.log('🔧 Initial array fields:', initialArrayFields);
     
     setAddFormData({
       record_name: '',
@@ -469,10 +462,10 @@ export function RecordsPage() {
 
   // Save record as draft
   const handleSaveAsDraft = async () => {
-    if (addLoading) return; // Prevent multiple submissions
+    if (saveAsDraftLoading || publishLoading) return; // Prevent multiple submissions
     
     try {
-      setAddLoading(true);
+      setSaveAsDraftLoading(true);
       
       // Validate required fields
       if (!addFormData.record_name.trim()) {
@@ -554,7 +547,6 @@ export function RecordsPage() {
       }
 
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || 'https://dev.dedi.global';
-      console.log('🔄 Saving record as draft:', `${API_BASE_URL}/dedi/${namespaceId}/${registryName}/save-record-as-draft`);
       
       const response = await fetch(`${API_BASE_URL}/dedi/${namespaceId}/${registryName}/save-record-as-draft`, {
         method: 'POST',
@@ -571,7 +563,6 @@ export function RecordsPage() {
       });
 
       const result = await response.json();
-      console.log('📝 Save as draft API response:', result);
 
       if (response.ok) {
         toast({
@@ -604,16 +595,16 @@ export function RecordsPage() {
         variant: 'destructive',
       });
     } finally {
-      setAddLoading(false);
+      setSaveAsDraftLoading(false);
     }
   };
 
   // Publish record directly
   const handlePublishRecord = async () => {
-    if (addLoading) return; // Prevent multiple submissions
+    if (saveAsDraftLoading || publishLoading) return; // Prevent multiple submissions
     
     try {
-      setAddLoading(true);
+      setPublishLoading(true);
       
       // Validate required fields
       if (!addFormData.record_name.trim()) {
@@ -696,7 +687,6 @@ export function RecordsPage() {
       const API_BASE_URL = import.meta.env.VITE_ENDPOINT || 'https://dev.dedi.global';
       
       // Publish the record directly using save-record-as-draft with publish=true
-      console.log('🔄 Publishing record directly');
       const publishResponse = await fetch(`${API_BASE_URL}/dedi/${namespaceId}/${registryName}/save-record-as-draft?publish=true`, {
         method: 'POST',
         credentials: 'include',
@@ -712,7 +702,6 @@ export function RecordsPage() {
       });
 
       const publishResult = await publishResponse.json();
-      console.log('📝 Publish API response:', publishResult);
 
       if (publishResponse.ok) {
         toast({
@@ -745,7 +734,7 @@ export function RecordsPage() {
         variant: 'destructive',
       });
     } finally {
-      setAddLoading(false);
+      setPublishLoading(false);
     }
   };
 
@@ -847,9 +836,7 @@ export function RecordsPage() {
     return value || '';
   };
 
-  console.log('🔍 Render check - records state:', records);
-  console.log('🔍 Render check - records length:', records.length);
-  console.log('🔍 Render check - loading state:', loading);
+
 
   if (loading) {
     return (
@@ -971,21 +958,7 @@ export function RecordsPage() {
             ))}
           </div>
           
-          <div className="flex justify-end mt-4">
-            <Button onClick={handleSearch} disabled={isSearching}>
-              {isSearching ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 h-4 w-4" />
-                  Search
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Search automatically triggers as you type - no button needed */}
         </div>
         
         {/* Search Results */}
@@ -1386,11 +1359,11 @@ export function RecordsPage() {
             </div>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={addLoading}>
+            <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={saveAsDraftLoading || publishLoading}>
               Cancel
             </Button>
-            <Button variant="secondary" onClick={handleSaveAsDraft} disabled={addLoading}>
-              {addLoading ? (
+            <Button variant="secondary" onClick={handleSaveAsDraft} disabled={saveAsDraftLoading || publishLoading}>
+              {saveAsDraftLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
                   Saving...
@@ -1399,8 +1372,8 @@ export function RecordsPage() {
                 'Save as Draft'
               )}
             </Button>
-            <Button onClick={handlePublishRecord} disabled={addLoading}>
-              {addLoading ? (
+            <Button onClick={handlePublishRecord} disabled={saveAsDraftLoading || publishLoading}>
+              {publishLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Publishing...

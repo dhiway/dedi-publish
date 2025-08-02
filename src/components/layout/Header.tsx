@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Menu, Settings, LogOut } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,10 +72,9 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => navigate('/settings')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </DropdownMenuItem>
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground border-b">
+                    {user?.email}
+                  </div>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
@@ -113,14 +112,7 @@ export function Header() {
                       <p className="text-sm text-muted-foreground">User</p>
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    className="justify-start"
-                    onClick={() => navigate('/settings')}
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Button>
+
                   <Button 
                     variant="ghost" 
                     className="justify-start"
