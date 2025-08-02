@@ -212,7 +212,7 @@ export function DashboardPage() {
       if (showCreateMetadata && Object.keys(formData.meta).length > 0) {
         meta = formData.meta;
       } else {
-        meta = { additionalProp1: {} };
+        meta = {};
       }
 
       const namespaceData = {
